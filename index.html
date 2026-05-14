@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ドット絵クリエイター V7.2 (読込エラー完全修正版)</title>
+<title>ドット絵クリエイター V7.3 (太さ変更・バグ修正版)</title>
 <style>
     /* 全体の基本設定 */
     body {
@@ -199,7 +199,7 @@
         <button id="btnPc" class="device-btn">💻 PCで使う</button>
     </div>
 
-    <h1>ドット絵クリエイター V7.2</h1>
+    <h1>ドット絵クリエイター V7.3</h1>
 
     <div class="editor-container">
         <!-- 描画エリア -->
@@ -381,6 +381,12 @@
     }
     btnPen.addEventListener('click', () => setTool('pen')); btnEraser.addEventListener('click', () => setTool('eraser')); btnFill.addEventListener('click', () => setTool('fill'));
 
+    // --- 【修正】ペンの太さ（スライダー）の読み取りを復活 ---
+    document.getElementById('penSize').addEventListener('input', (e) => {
+        currentPenSize = parseInt(e.target.value, 10);
+        document.getElementById('penSizeLabel').textContent = currentPenSize;
+    });
+
     // --- キャンバス解像度＆表示設定 ---
     function updateResolutionDropdown(w, h) {
         let exists = Array.from(document.getElementById('resolutionSelect').options).some(opt => opt.value === `${w}x${h}`);
@@ -392,7 +398,11 @@
         
         const penInput = document.getElementById('penSize');
         if(w <= 16) penInput.max = 8; else if(w <= 64) penInput.max = 16; else penInput.max = 40;
-        if(currentPenSize > penInput.max) { currentPenSize = penInput.max; document.getElementById('penSizeLabel').textContent = currentPenSize; }
+        if(currentPenSize > penInput.max) { 
+            currentPenSize = parseInt(penInput.max); 
+            penInput.value = currentPenSize;
+            document.getElementById('penSizeLabel').textContent = currentPenSize; 
+        }
     }
 
     function updateCanvasDisplay() {
@@ -495,7 +505,7 @@
         if(confirm("全消去しますか？")) { ctx.clearRect(0, 0, canvas.width, canvas.height); saveState(); }
     });
 
-    // --- 【修正】コードから読み込み (インポート) ---
+    // --- コードから読み込み (インポート) ---
     document.getElementById('btnImportArray').addEventListener('click', () => {
         try {
             let text = document.getElementById('importArrayInput').value.trim();
@@ -503,10 +513,8 @@
             
             let arr;
             try {
-                // 過去のバグで出力された「末尾の不要なカンマ」を削除してパースする
                 arr = JSON.parse(text.replace(/,\s*\]/g, ']'));
             } catch(e) {
-                // JSONでパースできない場合（JSのコードごと貼った場合など）は強制解釈する
                 arr = new Function("return " + text)();
             }
 
@@ -579,14 +587,13 @@
         if(confirm("ギャラリーを空にしますか？")) { localStorage.removeItem('pixelArtGallery_v7'); loadGallery(); }
     });
     
-    // --- 【修正】データ出力＆コピー ---
+    // --- データ出力＆コピー ---
     function rgbToHex(r, g, b) { return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1); }
     document.getElementById('generateBtn').addEventListener('click', () => {
         document.getElementById('dataUrlOutput').value = `url('${canvas.toDataURL("image/png")}')`;
         document.getElementById('arrayOutput').value = "生成中...";
         setTimeout(() => {
             const imgData = ctx.getImageData(0, 0, currentWidth, currentHeight).data; 
-            // 【修正】末尾にカンマが付かない、正しいJSON配列形式で生成するように変更
             let rowStrings = [];
             for (let y = 0; y < currentHeight; y++) {
                 let rowArray = [];
@@ -610,7 +617,8 @@
     });
 
     document.getElementById('colorPicker').addEventListener('input', (e) => {
-        currentColor = e.target.value; document.getElementById('penSize').dispatchEvent(new Event('input')); if (activeTool === 'eraser') setTool('pen'); 
+        currentColor = e.target.value; 
+        if (activeTool === 'eraser') setTool('pen'); 
     });
 
     saveState();
