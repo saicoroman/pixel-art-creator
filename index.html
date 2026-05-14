@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ドット絵クリエイター V6 (スマホ対応・線引き対応)</title>
+<title>ドット絵クリエイター V7.2 (読込エラー完全修正版)</title>
 <style>
     /* 全体の基本設定 */
     body {
@@ -64,7 +64,7 @@
         display: flex;
         flex-direction: column;
         gap: 15px;
-        min-width: 250px;
+        min-width: 260px;
         flex: 1;
     }
 
@@ -78,7 +78,7 @@
         align-items: center;
         justify-content: center;
         box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
-        touch-action: none; /* スマホでのスクロールを防止 */
+        touch-action: none;
     }
 
     #pixelCanvas {
@@ -111,7 +111,6 @@
         gap: 10px;
     }
 
-    /* ツール切り替えボタン */
     .tool-btn {
         flex: 1;
         background-color: #7f8c8d;
@@ -122,156 +121,85 @@
         font-size: 14px;
         font-weight: bold;
     }
-    .tool-btn.active {
-        background-color: #3498db;
-        border: 2px solid #fff;
-    }
+    .tool-btn.active { background-color: #3498db; border: 2px solid #fff; }
 
     select, input[type="range"], input[type="text"] {
-        padding: 8px;
-        font-size: 14px;
-        width: 100%;
-        box-sizing: border-box;
-        border-radius: 4px;
-        border: none;
+        padding: 8px; font-size: 14px; width: 100%; box-sizing: border-box; border-radius: 4px; border: none;
     }
 
-    input[type="color"] {
-        width: 60px;
-        height: 45px;
-        padding: 0;
-        border: none;
-        cursor: pointer;
-    }
+    input[type="color"] { width: 60px; height: 45px; padding: 0; border: none; cursor: pointer; }
 
     button {
-        padding: 10px 15px;
-        font-size: 14px;
-        cursor: pointer;
-        background-color: #3498db;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        font-weight: bold;
+        padding: 10px 15px; font-size: 14px; cursor: pointer; background-color: #3498db;
+        color: white; border: none; border-radius: 5px; font-weight: bold;
     }
-
+    button:active { transform: scale(0.97); }
     button.clear { background-color: #e74c3c; }
     button.save { background-color: #2ecc71; }
+    button.undo { background-color: #f1c40f; color: #000; }
+
+    /* 十字キー（平行移動） */
+    .dpad-container {
+        display: grid;
+        grid-template-columns: 40px 40px 40px;
+        gap: 5px;
+        justify-content: center;
+        margin: 5px 0;
+    }
+    .dpad-btn { padding: 0; height: 40px; font-size: 18px; background-color: #7f8c8d; }
+    .dpad-up { grid-column: 2; grid-row: 1; }
+    .dpad-left { grid-column: 1; grid-row: 2; }
+    .dpad-right { grid-column: 3; grid-row: 2; }
+    .dpad-down { grid-column: 2; grid-row: 3; }
 
     /* カラーパレット */
-    #palette {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 5px;
-    }
-    .palette-color {
-        width: 30px;
-        height: 30px;
-        border: 2px solid #fff;
-        border-radius: 4px;
-        cursor: pointer;
-    }
+    #palette { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; }
+    .palette-color { width: 30px; height: 30px; border: 2px solid #fff; border-radius: 4px; cursor: pointer; }
 
     /* ギャラリー */
-    .gallery-container {
-        margin: 20px auto;
-        width: 90%;
-        max-width: 1000px;
-        background-color: #34495e;
-        padding: 15px;
-        border-radius: 10px;
-        box-sizing: border-box;
-    }
-    .gallery-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 15px;
-        margin-top: 15px;
-    }
-    .gallery-item-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 60px;
-        gap: 5px;
-    }
-    .gallery-item {
-        width: 60px;
-        height: 60px;
-        border: 2px solid #bdc3c7;
-        background-color: #fff;
-        cursor: pointer;
-        image-rendering: pixelated;
-        object-fit: contain;
-        border-radius: 4px;
-    }
+    .gallery-container { margin: 20px auto; width: 90%; max-width: 1000px; background-color: #34495e; padding: 15px; border-radius: 10px; box-sizing: border-box; }
+    .gallery-grid { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; }
+    .gallery-item-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; width: 60px; gap: 5px; }
+    .gallery-item { width: 60px; height: 60px; border: 2px solid #bdc3c7; background-color: #fff; cursor: pointer; image-rendering: pixelated; object-fit: contain; border-radius: 4px; }
     .gallery-name { font-size: 11px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    /* 出力エリア */
-    .output-container {
-        margin: 20px auto;
-        width: 90%;
-        max-width: 1000px;
+    
+    /* ギャラリー個別削除ボタン */
+    .delete-item-btn {
+        position: absolute; top: -8px; right: -8px; width: 22px; height: 22px;
+        background-color: #e74c3c; border: 2px solid white; border-radius: 50%;
+        color: white; font-weight: bold; display: flex; align-items: center; justify-content: center;
+        font-size: 14px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 10;
     }
+
+    /* 出力/入力エリア */
+    .output-container { margin: 20px auto; width: 90%; max-width: 1000px; }
     .output-area { margin-top: 20px; }
-    textarea {
-        width: 100%;
-        height: 100px;
-        background-color: #1a252f;
-        color: #2ecc71;
-        font-family: monospace;
-        padding: 10px;
-        border: 1px solid #000;
-        border-radius: 5px;
-        box-sizing: border-box;
-    }
-
+    textarea { width: 100%; height: 100px; background-color: #1a252f; color: #2ecc71; font-family: monospace; padding: 10px; border: 1px solid #000; border-radius: 5px; box-sizing: border-box; }
     label { font-weight: bold; margin-bottom: 5px; display: block; font-size: 14px; }
 
-    /* =========================================
-       スマホモード用のスタイル (Javascriptで付与)
-       ========================================= */
+    /* スマホモード */
     body.mode-mobile h1 { font-size: 18px; }
-    body.mode-mobile .editor-container {
-        flex-direction: column;
-        padding: 10px;
-        width: 100%;
-        border-radius: 0;
-    }
-    body.mode-mobile #workspace {
-        width: 100% !important;
-        height: 350px !important; /* スマホ画面に合わせたサイズ */
-    }
-    body.mode-mobile .tools {
-        width: 100%;
-    }
-    body.mode-mobile .tool-btn { padding: 15px 5px; } /* タップしやすく大きく */
+    body.mode-mobile .editor-container { flex-direction: column; padding: 10px; width: 100%; border-radius: 0; }
+    body.mode-mobile #workspace { width: 100% !important; height: 350px !important; }
+    body.mode-mobile .tools { width: 100%; }
+    body.mode-mobile .tool-btn { padding: 15px 5px; }
     body.mode-mobile button { padding: 15px 15px; }
 
-    /* PCモード用のスタイル */
-    body.mode-pc .editor-container {
-        flex-direction: row;
-        width: 95%;
-    }
-    body.mode-pc #workspace {
-        width: 512px;
-        height: 512px;
-    }
-
+    /* PCモード */
+    body.mode-pc .editor-container { flex-direction: row; width: 95%; }
+    body.mode-pc #workspace { width: 512px; height: 512px; }
 </style>
 </head>
 <body>
 
-    <!-- スタート画面（デバイス選択） -->
+    <!-- スタート画面 -->
     <div id="startScreen">
         <h2>使用するデバイスを選択</h2>
         <button id="btnMobile" class="device-btn">📱 スマホで使う</button>
         <button id="btnPc" class="device-btn">💻 PCで使う</button>
-        <p style="color:#bdc3c7; font-size:12px; margin-top:20px;">※画面のレイアウトが最適化されます</p>
     </div>
 
-    <h1>ドット絵クリエイター V6</h1>
+    <h1>ドット絵クリエイター V7.2</h1>
 
     <div class="editor-container">
         <!-- 描画エリア -->
@@ -293,7 +221,7 @@
             </div>
 
             <div class="tool-group">
-                <label>ツール (ペン/消し/塗り)</label>
+                <label>ツール</label>
                 <div class="tool-row">
                     <button id="btnPen" class="tool-btn active">ペン</button>
                     <button id="btnEraser" class="tool-btn">消しゴム</button>
@@ -308,8 +236,19 @@
                 </div>
             </div>
 
+            <!-- 平行移動（十字キー） -->
             <div class="tool-group">
-                <label>カラーパレット (長押しで削除)</label>
+                <label>平行移動 (1ドットズラす)</label>
+                <div class="dpad-container">
+                    <button id="btnShiftUp" class="dpad-btn dpad-up">↑</button>
+                    <button id="btnShiftLeft" class="dpad-btn dpad-left">←</button>
+                    <button id="btnShiftRight" class="dpad-btn dpad-right">→</button>
+                    <button id="btnShiftDown" class="dpad-btn dpad-down">↓</button>
+                </div>
+            </div>
+
+            <div class="tool-group">
+                <label>カラーパレット</label>
                 <button id="saveColorBtn" style="background-color: #8e44ad;">パレットに色を追加</button>
                 <div id="palette"></div>
             </div>
@@ -320,12 +259,13 @@
             </div>
 
             <div class="tool-group">
-                <label>ギャラリー保存</label>
-                <input type="text" id="artworkName" placeholder="作品名 (省略可)">
-                <div class="tool-row" style="margin-top:5px;">
+                <label>操作 / 保存</label>
+                <div class="tool-row" style="margin-bottom: 10px;">
                     <button class="clear" id="clearBtn" style="flex:1;">全消去</button>
-                    <button class="save" id="saveGalleryBtn" style="flex:1;">保存する</button>
+                    <button class="undo" id="undoBtn" style="flex:1;">↩️ 1つ戻る</button>
                 </div>
+                <input type="text" id="artworkName" placeholder="作品名 (省略可)">
+                <button class="save" id="saveGalleryBtn" style="margin-top: 5px;">ギャラリーに保存</button>
             </div>
         </div>
     </div>
@@ -336,454 +276,345 @@
             <h2 style="margin:0; font-size:18px;">保存した作品ギャラリー</h2>
             <button id="clearGalleryBtn" class="clear" style="font-size: 12px; padding:5px 10px;">すべて消去</button>
         </div>
+        <p style="font-size:12px; color:#bdc3c7;">※右上の「×」ボタンで個別に削除できます。</p>
         <div class="gallery-grid" id="galleryGrid"></div>
     </div>
 
-    <!-- 出力エリア -->
+    <!-- 出力 / 入力エリア -->
     <div class="output-container">
-        <div class="tool-group">
-            <button id="generateBtn" style="background-color:#d35400; padding:15px; font-size:16px;">コードを生成する (データ出力)</button>
+        <!-- コードの生成（出力） -->
+        <div class="tool-group" style="background-color:#27ae60;">
+            <button id="generateBtn" style="background-color:#2ecc71; padding:15px; font-size:16px;">コードを生成する (出力)</button>
         </div>
-
+        
         <div class="output-area">
             <label>1. Data URL (Base64画像データ)</label>
-            <textarea id="dataUrlOutput" readonly></textarea>
+            <textarea id="dataUrlOutput" readonly placeholder="上の「コードを生成する」ボタンを押すと生成されます..."></textarea>
         </div>
 
         <div class="output-area">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
-                <label style="margin: 0;">2. プログラム用2D配列</label>
-                <!-- コピーボタン -->
-                <button id="copyArrayBtn" style="padding: 5px 15px; font-size: 12px; background-color: #27ae60;">コピーする</button>
+                <label style="margin: 0;">2. プログラム用2D配列 (出力結果)</label>
+                <button id="copyArrayBtn" style="padding: 5px 15px; font-size: 12px; background-color: #3498db;">コピーする</button>
             </div>
             <textarea id="arrayOutput" readonly placeholder="上の「コードを生成する」ボタンを押すと生成されます..."></textarea>
+        </div>
+
+        <hr style="border-color:#7f8c8d; margin:30px 0;">
+
+        <!-- コードから読み込み（入力） -->
+        <div class="tool-group" style="background-color:#d35400;">
+            <label style="color:#fff;">プログラム配列から画像を復元 (入力)</label>
+            <textarea id="importArrayInput" placeholder='ここに配列データ ( [ [null, "#000000"...], ... ] ) を貼り付けてください' style="height: 80px;"></textarea>
+            <button id="btnImportArray" style="background-color:#e67e22; margin-top:5px; padding:15px;">コードから画像を読み込む</button>
         </div>
     </div>
 
 <script>
-    // --- デバイス選択ロジック ---
+    // --- デバイス選択 ---
     const startScreen = document.getElementById('startScreen');
-    const btnMobile = document.getElementById('btnMobile');
-    const btnPc = document.getElementById('btnPc');
-
-    btnMobile.addEventListener('click', () => {
-        document.body.classList.add('mode-mobile');
-        startScreen.style.display = 'none';
-        updateCanvasDisplay(); // レイアウト決定後にズームを再計算
+    document.getElementById('btnMobile').addEventListener('click', () => {
+        document.body.classList.add('mode-mobile'); startScreen.style.display = 'none'; updateCanvasDisplay();
     });
-    btnPc.addEventListener('click', () => {
-        document.body.classList.add('mode-pc');
-        startScreen.style.display = 'none';
-        updateCanvasDisplay();
+    document.getElementById('btnPc').addEventListener('click', () => {
+        document.body.classList.add('mode-pc'); startScreen.style.display = 'none'; updateCanvasDisplay();
     });
 
-    // --- メインロジック ---
     const canvas = document.getElementById('pixelCanvas');
     const workspace = document.getElementById('workspace');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     
-    // UI要素
-    const resolutionSelect = document.getElementById('resolutionSelect');
-    const zoomSlider = document.getElementById('zoomSlider');
-    const zoomLabel = document.getElementById('zoomLabel');
-    const colorPicker = document.getElementById('colorPicker');
-    const penSizeInput = document.getElementById('penSize');
-    const penSizeLabel = document.getElementById('penSizeLabel');
-    const saveColorBtn = document.getElementById('saveColorBtn');
-    const paletteDiv = document.getElementById('palette');
-    const clearBtn = document.getElementById('clearBtn');
-    const btnPen = document.getElementById('btnPen');
-    const btnEraser = document.getElementById('btnEraser');
-    const btnFill = document.getElementById('btnFill');
-    const artworkNameInput = document.getElementById('artworkName');
-    const saveGalleryBtn = document.getElementById('saveGalleryBtn');
-    const galleryGrid = document.getElementById('galleryGrid');
-    const clearGalleryBtn = document.getElementById('clearGalleryBtn');
-    const generateBtn = document.getElementById('generateBtn');
-    const dataUrlOutput = document.getElementById('dataUrlOutput');
-    const arrayOutput = document.getElementById('arrayOutput');
-    const copyArrayBtn = document.getElementById('copyArrayBtn'); 
+    let currentWidth = 16; let currentHeight = 16;
+    let isDrawing = false; let hasDrawn = false;
+    let currentColor = '#000000'; let currentPenSize = 1; let currentZoom = 0;
+    let activeTool = 'pen'; let lastX = -1; let lastY = -1;
 
-    // 状態管理
-    let currentWidth = 16;
-    let currentHeight = 16;
-    let isDrawing = false;
-    let currentColor = '#000000';
-    let currentPenSize = 1;
-    let currentZoom = 0;
-    let activeTool = 'pen'; 
-    let lastX = -1; // 線引き用：前のX座標
-    let lastY = -1; // 線引き用：前のY座標
+    // --- Undo（戻る）機能 ---
+    const undoStack = [];
+    const MAX_HISTORY = 30;
+
+    function saveState() {
+        undoStack.push({
+            img: ctx.getImageData(0, 0, canvas.width, canvas.height),
+            w: canvas.width,
+            h: canvas.height
+        });
+        if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    }
+
+    document.getElementById('undoBtn').addEventListener('click', () => {
+        if (undoStack.length > 1) {
+            undoStack.pop(); 
+            const prevState = undoStack[undoStack.length - 1]; 
+            if (canvas.width !== prevState.w || canvas.height !== prevState.h) {
+                currentWidth = prevState.w; currentHeight = prevState.h;
+                canvas.width = currentWidth; canvas.height = currentHeight;
+                updateResolutionDropdown(currentWidth, currentHeight);
+                updateCanvasDisplay();
+            }
+            ctx.putImageData(prevState.img, 0, 0);
+        } else {
+            alert("これ以上戻れません！");
+        }
+    });
+
+    // --- 平行移動機能 ---
+    function shiftCanvas(dx, dy) {
+        const temp = document.createElement('canvas');
+        temp.width = canvas.width; temp.height = canvas.height;
+        temp.getContext('2d').drawImage(canvas, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(temp, dx, dy);
+        saveState();
+    }
+    document.getElementById('btnShiftUp').addEventListener('click', () => shiftCanvas(0, -1));
+    document.getElementById('btnShiftDown').addEventListener('click', () => shiftCanvas(0, 1));
+    document.getElementById('btnShiftLeft').addEventListener('click', () => shiftCanvas(-1, 0));
+    document.getElementById('btnShiftRight').addEventListener('click', () => shiftCanvas(1, 0));
 
     // --- ツール切り替え ---
-    function setTool(toolName) {
-        activeTool = toolName;
-        btnPen.classList.remove('active');
-        btnEraser.classList.remove('active');
-        btnFill.classList.remove('active');
-        if (toolName === 'pen') btnPen.classList.add('active');
-        else if (toolName === 'eraser') btnEraser.classList.add('active');
-        else if (toolName === 'fill') btnFill.classList.add('active');
+    const btnPen = document.getElementById('btnPen'); const btnEraser = document.getElementById('btnEraser'); const btnFill = document.getElementById('btnFill');
+    function setTool(tool) {
+        activeTool = tool;
+        btnPen.classList.remove('active'); btnEraser.classList.remove('active'); btnFill.classList.remove('active');
+        if(tool === 'pen') btnPen.classList.add('active'); else if(tool === 'eraser') btnEraser.classList.add('active'); else btnFill.classList.add('active');
     }
-    btnPen.addEventListener('click', () => setTool('pen'));
-    btnEraser.addEventListener('click', () => setTool('eraser'));
-    btnFill.addEventListener('click', () => setTool('fill'));
+    btnPen.addEventListener('click', () => setTool('pen')); btnEraser.addEventListener('click', () => setTool('eraser')); btnFill.addEventListener('click', () => setTool('fill'));
 
-    colorPicker.addEventListener('input', (e) => {
-        currentColor = e.target.value;
-        if (activeTool === 'eraser') setTool('pen'); 
-    });
+    // --- キャンバス解像度＆表示設定 ---
+    function updateResolutionDropdown(w, h) {
+        let exists = Array.from(document.getElementById('resolutionSelect').options).some(opt => opt.value === `${w}x${h}`);
+        if(!exists) {
+            const opt = document.createElement('option'); opt.value = `${w}x${h}`; opt.text = `${w} × ${h}`;
+            document.getElementById('resolutionSelect').appendChild(opt);
+        }
+        document.getElementById('resolutionSelect').value = `${w}x${h}`;
+        
+        const penInput = document.getElementById('penSize');
+        if(w <= 16) penInput.max = 8; else if(w <= 64) penInput.max = 16; else penInput.max = 40;
+        if(currentPenSize > penInput.max) { currentPenSize = penInput.max; document.getElementById('penSizeLabel').textContent = currentPenSize; }
+    }
 
-    penSizeInput.addEventListener('input', (e) => {
-        currentPenSize = parseInt(e.target.value, 10);
-        penSizeLabel.textContent = currentPenSize;
-    });
-
-    // --- 表示設定・ズーム ---
     function updateCanvasDisplay() {
         let scale = 1;
         if (currentZoom === 0) {
-            // workspaceの現在の幅を元にスケールを計算
             const rect = workspace.getBoundingClientRect();
-            const fitWidth = rect.width * 0.9; // 余白を持たせる
-            const fitHeight = rect.height * 0.9;
-            const scaleX = fitWidth / currentWidth;
-            const scaleY = fitHeight / currentHeight;
-            scale = Math.floor(Math.min(scaleX, scaleY));
-            if(scale < 1) scale = 1;
-            zoomLabel.textContent = `Auto (${scale}倍)`;
+            scale = Math.max(1, Math.floor(Math.min((rect.width * 0.9) / currentWidth, (rect.height * 0.9) / currentHeight)));
+            document.getElementById('zoomLabel').textContent = `Auto (${scale}倍)`;
         } else {
-            scale = currentZoom;
-            zoomLabel.textContent = `${scale}倍`;
+            scale = currentZoom; document.getElementById('zoomLabel').textContent = `${scale}倍`;
         }
-        canvas.style.width = (currentWidth * scale) + 'px';
-        canvas.style.height = (currentHeight * scale) + 'px';
+        canvas.style.width = (currentWidth * scale) + 'px'; canvas.style.height = (currentHeight * scale) + 'px';
     }
 
-    zoomSlider.addEventListener('input', (e) => {
-        currentZoom = parseInt(e.target.value, 10);
-        updateCanvasDisplay();
-    });
-
-    resolutionSelect.addEventListener('change', (e) => {
-        if(confirm("解像度を変更するとキャンバスがリセットされます。よろしいですか？")) {
+    document.getElementById('zoomSlider').addEventListener('input', (e) => { currentZoom = parseInt(e.target.value, 10); updateCanvasDisplay(); });
+    document.getElementById('resolutionSelect').addEventListener('change', (e) => {
+        if(confirm("キャンバスがリセットされます。よろしいですか？")) {
             const [w, h] = e.target.value.split('x').map(Number);
-            currentWidth = w;
-            currentHeight = h;
-            canvas.width = w;
-            canvas.height = h;
-            ctx.clearRect(0, 0, w, h);
-            
-            if(w <= 16) penSizeInput.max = 8;
-            else if(w <= 32) penSizeInput.max = 10;
-            else if(w <= 64) penSizeInput.max = 16;
-            else if(w <= 128) penSizeInput.max = 24;
-            else penSizeInput.max = 40;
-            
-            if(currentPenSize > parseInt(penSizeInput.max)) {
-                currentPenSize = parseInt(penSizeInput.max);
-                penSizeInput.value = currentPenSize;
-                penSizeLabel.textContent = currentPenSize;
-            }
-            zoomSlider.value = 0;
-            currentZoom = 0;
-            updateCanvasDisplay();
-        } else {
-            e.target.value = `${currentWidth}x${currentHeight}`;
-        }
+            currentWidth = w; currentHeight = h; canvas.width = w; canvas.height = h;
+            updateResolutionDropdown(w, h);
+            currentZoom = 0; document.getElementById('zoomSlider').value = 0; updateCanvasDisplay();
+            ctx.clearRect(0, 0, w, h); saveState();
+        } else { e.target.value = `${currentWidth}x${currentHeight}`; }
     });
 
-    // --- 塗りつぶし（Flood Fill） ---
+    // --- 描画ロジック ---
     function hexToRgba(hex) {
         let r = 0, g = 0, b = 0;
         if (hex.length == 4) { r = parseInt(hex[1]+hex[1], 16); g = parseInt(hex[2]+hex[2], 16); b = parseInt(hex[3]+hex[3], 16); }
         else if (hex.length == 7) { r = parseInt(hex[1]+hex[2], 16); g = parseInt(hex[3]+hex[4], 16); b = parseInt(hex[5]+hex[6], 16); }
         return [r, g, b, 255];
     }
-    function colorMatch(a, b) { return a[0]===b[0] && a[1]===b[1] && a[2]===b[2] && a[3]===b[3]; }
     
     function floodFill(startX, startY, fillColorHex) {
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        const startPos = (startY * canvas.width + startX) * 4;
+        const data = imgData.data; const startPos = (startY * canvas.width + startX) * 4;
         const targetColor = [data[startPos], data[startPos+1], data[startPos+2], data[startPos+3]];
         const fillColor = hexToRgba(fillColorHex);
-        if (colorMatch(targetColor, fillColor)) return;
+        if (targetColor[0]===fillColor[0] && targetColor[1]===fillColor[1] && targetColor[2]===fillColor[2] && targetColor[3]===fillColor[3]) return;
 
-        const pixelsToCheck = [startX, startY];
-        const width = canvas.width;
-        const height = canvas.height;
-
-        while (pixelsToCheck.length > 0) {
-            const y = pixelsToCheck.pop();
-            const x = pixelsToCheck.pop();
-            const pos = (y * width + x) * 4;
-            if (data[pos] === targetColor[0] && data[pos+1] === targetColor[1] && data[pos+2] === targetColor[2] && data[pos+3] === targetColor[3]) {
-                data[pos] = fillColor[0]; data[pos+1] = fillColor[1]; data[pos+2] = fillColor[2]; data[pos+3] = fillColor[3];
-                if (x > 0) { pixelsToCheck.push(x - 1, y); }
-                if (x < width - 1) { pixelsToCheck.push(x + 1, y); }
-                if (y > 0) { pixelsToCheck.push(x, y - 1); }
-                if (y < height - 1) { pixelsToCheck.push(x, y + 1); }
+        const stack = [startX, startY]; const w = canvas.width; const h = canvas.height;
+        while (stack.length > 0) {
+            const y = stack.pop(); const x = stack.pop(); const p = (y * w + x) * 4;
+            if (data[p] === targetColor[0] && data[p+1] === targetColor[1] && data[p+2] === targetColor[2] && data[p+3] === targetColor[3]) {
+                data[p] = fillColor[0]; data[p+1] = fillColor[1]; data[p+2] = fillColor[2]; data[p+3] = fillColor[3];
+                if (x > 0) stack.push(x - 1, y); if (x < w - 1) stack.push(x + 1, y);
+                if (y > 0) stack.push(x, y - 1); if (y < h - 1) stack.push(x, y + 1);
             }
         }
         ctx.putImageData(imgData, 0, 0);
+        saveState();
     }
 
-    // --- 描画処理（線引き対応） ---
     function drawPixel(x, y) {
-        const startX = x - Math.floor(currentPenSize / 2);
-        const startY = y - Math.floor(currentPenSize / 2);
-        if (activeTool === 'eraser') {
-            ctx.clearRect(startX, startY, currentPenSize, currentPenSize);
-        } else {
-            ctx.fillStyle = currentColor;
-            ctx.fillRect(startX, startY, currentPenSize, currentPenSize);
-        }
+        const sx = x - Math.floor(currentPenSize / 2); const sy = y - Math.floor(currentPenSize / 2);
+        if (activeTool === 'eraser') ctx.clearRect(sx, sy, currentPenSize, currentPenSize);
+        else { ctx.fillStyle = currentColor; ctx.fillRect(sx, sy, currentPenSize, currentPenSize); }
     }
 
-    // Bresenhamの線引きアルゴリズム（隙間を埋める）
     function drawLine(x0, y0, x1, y1) {
-        let dx = Math.abs(x1 - x0);
-        let dy = Math.abs(y1 - y0);
-        let sx = (x0 < x1) ? 1 : -1;
-        let sy = (y0 < y1) ? 1 : -1;
-        let err = dx - dy;
-
+        let dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0), sx = (x0 < x1) ? 1 : -1, sy = (y0 < y1) ? 1 : -1, err = dx - dy;
         while (true) {
-            drawPixel(x0, y0);
-            if ((x0 === x1) && (y0 === y1)) break;
-            let e2 = 2 * err;
-            if (e2 > -dy) { err -= dy; x0 += sx; }
-            if (e2 < dx) { err += dx; y0 += sy; }
+            drawPixel(x0, y0); if ((x0 === x1) && (y0 === y1)) break;
+            let e2 = 2 * err; if (e2 > -dy) { err -= dy; x0 += sx; } if (e2 < dx) { err += dx; y0 += sy; }
         }
     }
 
-    function getMousePos(clientX, clientY) {
+    function getMousePos(cX, cY) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        let x = Math.floor((clientX - rect.left) * scaleX);
-        let y = Math.floor((clientY - rect.top) * scaleY);
-        // 範囲外の補正
-        if(x < 0) x = 0; if(x >= canvas.width) x = canvas.width - 1;
-        if(y < 0) y = 0; if(y >= canvas.height) y = canvas.height - 1;
+        let x = Math.floor((cX - rect.left) * (canvas.width / rect.width)); let y = Math.floor((cY - rect.top) * (canvas.height / rect.height));
+        if(x < 0) x = 0; if(x >= canvas.width) x = canvas.width - 1; if(y < 0) y = 0; if(y >= canvas.height) y = canvas.height - 1;
         return { x, y };
     }
 
-    function startDrawing(clientX, clientY) {
-        const pos = getMousePos(clientX, clientY);
-        if (activeTool === 'fill') {
-            floodFill(pos.x, pos.y, currentColor);
-            return;
-        }
-        isDrawing = true;
-        lastX = pos.x;
-        lastY = pos.y;
-        drawPixel(pos.x, pos.y);
+    function startDrawing(cX, cY) {
+        const p = getMousePos(cX, cY);
+        if (activeTool === 'fill') { floodFill(p.x, p.y, currentColor); return; }
+        isDrawing = true; hasDrawn = true; lastX = p.x; lastY = p.y; drawPixel(p.x, p.y);
     }
 
-    function moveDrawing(clientX, clientY) {
+    function moveDrawing(cX, cY) {
         if (!isDrawing || activeTool === 'fill') return;
-        const pos = getMousePos(clientX, clientY);
-        drawLine(lastX, lastY, pos.x, pos.y); // 前の座標から今の座標まで線を引く
-        lastX = pos.x;
-        lastY = pos.y;
+        const p = getMousePos(cX, cY); drawLine(lastX, lastY, p.x, p.y); lastX = p.x; lastY = p.y;
     }
 
     function endDrawing() {
-        isDrawing = false;
-        lastX = -1;
-        lastY = -1;
+        isDrawing = false; lastX = -1; lastY = -1;
+        if(hasDrawn) { saveState(); hasDrawn = false; }
     }
 
-    // マウスイベント
     canvas.addEventListener('mousedown', (e) => startDrawing(e.clientX, e.clientY));
     canvas.addEventListener('mousemove', (e) => moveDrawing(e.clientX, e.clientY));
     window.addEventListener('mouseup', endDrawing);
 
-    // タッチイベント（スマホ対応・スクロール防止）
-    canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault(); // スクロール防止
-        const touch = e.touches[0];
-        startDrawing(touch.clientX, touch.clientY);
-    }, { passive: false });
-    
-    canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        moveDrawing(touch.clientX, touch.clientY);
-    }, { passive: false });
-    
-    canvas.addEventListener('touchend', endDrawing);
-    canvas.addEventListener('touchcancel', endDrawing);
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); moveDrawing(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    canvas.addEventListener('touchend', endDrawing); canvas.addEventListener('touchcancel', endDrawing);
 
-    clearBtn.addEventListener('click', () => {
-        if(confirm("キャンバスを全て消去しますか？")) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        if(confirm("全消去しますか？")) { ctx.clearRect(0, 0, canvas.width, canvas.height); saveState(); }
     });
 
-    // --- カラーパレット機能 ---
-    let savedColors = new Set();
-    function addColorToDOM(color) {
-        const div = document.createElement('div');
-        div.className = 'palette-color';
-        div.style.backgroundColor = color;
-        
-        div.addEventListener('click', () => {
-            colorPicker.value = color;
-            currentColor = color;
-            if(activeTool === 'eraser') setTool('pen');
-        });
-
-        // 削除機能（PCは右クリック、スマホは長押し）
-        div.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            if(confirm("この色をパレットから削除しますか？")) {
-                savedColors.delete(color);
-                div.remove();
-                localStorage.setItem('pixelArtPalette_v6', JSON.stringify(Array.from(savedColors)));
+    // --- 【修正】コードから読み込み (インポート) ---
+    document.getElementById('btnImportArray').addEventListener('click', () => {
+        try {
+            let text = document.getElementById('importArrayInput').value.trim();
+            if(!text) { alert("配列データが入力されていません！"); return; }
+            
+            let arr;
+            try {
+                // 過去のバグで出力された「末尾の不要なカンマ」を削除してパースする
+                arr = JSON.parse(text.replace(/,\s*\]/g, ']'));
+            } catch(e) {
+                // JSONでパースできない場合（JSのコードごと貼った場合など）は強制解釈する
+                arr = new Function("return " + text)();
             }
-        });
-        paletteDiv.appendChild(div);
-    }
 
-    saveColorBtn.addEventListener('click', () => {
-        const color = colorPicker.value;
-        if (!savedColors.has(color)) {
-            savedColors.add(color);
-            addColorToDOM(color);
-            localStorage.setItem('pixelArtPalette_v6', JSON.stringify(Array.from(savedColors)));
-        }
+            if(!Array.isArray(arr) || !Array.isArray(arr[0])) throw new Error("配列の形式が正しくありません");
+            
+            const h = arr.length; const w = arr[0].length;
+            currentWidth = w; currentHeight = h; canvas.width = w; canvas.height = h;
+            updateResolutionDropdown(w, h);
+            currentZoom = 0; document.getElementById('zoomSlider').value = 0; updateCanvasDisplay();
+            
+            ctx.clearRect(0, 0, w, h);
+            for(let y = 0; y < h; y++) {
+                for(let x = 0; x < w; x++) {
+                    if(arr[y][x]) { ctx.fillStyle = arr[y][x]; ctx.fillRect(x, y, 1, 1); }
+                }
+            }
+            saveState();
+            alert("画像の読み込みに成功しました！");
+            document.getElementById('importArrayInput').value = ""; 
+        } catch(e) { alert("エラー: 配列データが読み込めません。\n" + e.message); }
     });
-
-    const storedPalette = JSON.parse(localStorage.getItem('pixelArtPalette_v6'));
-    if (storedPalette && storedPalette.length > 0) {
-        storedPalette.forEach(c => { savedColors.add(c); addColorToDOM(c); });
-    } else {
-        ['#000000', '#ffffff', '#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'].forEach(c => {
-            savedColors.add(c); addColorToDOM(c);
-        });
-        localStorage.setItem('pixelArtPalette_v6', JSON.stringify(Array.from(savedColors)));
-    }
 
     // --- ギャラリー機能 ---
     function loadGallery() {
-        galleryGrid.innerHTML = '';
-        const savedData = JSON.parse(localStorage.getItem('pixelArtGallery_v6') || '[]');
-        savedData.forEach((item) => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'gallery-item-wrapper';
-            const img = document.createElement('img');
-            img.src = item.data;
-            img.className = 'gallery-item';
-            const nameLabel = document.createElement('div');
-            nameLabel.className = 'gallery-name';
-            nameLabel.textContent = item.name;
+        const grid = document.getElementById('galleryGrid'); grid.innerHTML = '';
+        const savedData = JSON.parse(localStorage.getItem('pixelArtGallery_v7') || '[]');
+        
+        savedData.forEach((item, index) => {
+            const wrapper = document.createElement('div'); wrapper.className = 'gallery-item-wrapper';
+            const delBtn = document.createElement('div');
+            delBtn.className = 'delete-item-btn'; delBtn.textContent = '×';
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                if(confirm(`「${item.name}」を削除しますか？`)) {
+                    savedData.splice(index, 1);
+                    localStorage.setItem('pixelArtGallery_v7', JSON.stringify(savedData));
+                    loadGallery();
+                }
+            });
+
+            const img = document.createElement('img'); img.src = item.data; img.className = 'gallery-item';
+            const nameLabel = document.createElement('div'); nameLabel.className = 'gallery-name'; nameLabel.textContent = item.name;
 
             img.addEventListener('click', () => {
-                if(confirm(`「${item.name}」をキャンバスに読み込みますか？`)) {
+                if(confirm(`「${item.name}」を読み込みますか？`)) {
                     const loadImg = new Image();
                     loadImg.onload = () => {
-                        currentWidth = loadImg.width;
-                        currentHeight = loadImg.height;
-                        canvas.width = currentWidth;
-                        canvas.height = currentHeight;
-                        
-                        let optionExists = false;
-                        for(let i=0; i<resolutionSelect.options.length; i++){
-                            if(resolutionSelect.options[i].value === `${currentWidth}x${currentHeight}`){
-                                resolutionSelect.value = `${currentWidth}x${currentHeight}`;
-                                optionExists = true; break;
-                            }
-                        }
-                        if(!optionExists) {
-                            const newOption = document.createElement('option');
-                            newOption.value = `${currentWidth}x${currentHeight}`;
-                            newOption.text = `${currentWidth} × ${currentHeight}`;
-                            resolutionSelect.appendChild(newOption);
-                            resolutionSelect.value = `${currentWidth}x${currentHeight}`;
-                        }
-                        
-                        zoomSlider.value = 0; currentZoom = 0; updateCanvasDisplay();
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(loadImg, 0, 0);
-                        artworkNameInput.value = item.name === "無題" ? "" : item.name;
+                        currentWidth = loadImg.width; currentHeight = loadImg.height; canvas.width = currentWidth; canvas.height = currentHeight;
+                        updateResolutionDropdown(currentWidth, currentHeight);
+                        currentZoom = 0; document.getElementById('zoomSlider').value = 0; updateCanvasDisplay();
+                        ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(loadImg, 0, 0);
+                        document.getElementById('artworkName').value = item.name === "無題" ? "" : item.name;
+                        saveState();
                     };
                     loadImg.src = item.data;
                 }
             });
-            wrapper.appendChild(img); wrapper.appendChild(nameLabel); galleryGrid.appendChild(wrapper);
+            wrapper.appendChild(delBtn); wrapper.appendChild(img); wrapper.appendChild(nameLabel); grid.appendChild(wrapper);
         });
     }
 
-    saveGalleryBtn.addEventListener('click', () => {
-        const dataURL = canvas.toDataURL("image/png");
-        const name = artworkNameInput.value.trim() || "無題";
-        let savedData = JSON.parse(localStorage.getItem('pixelArtGallery_v6') || '[]');
-        savedData.push({ name: name, data: dataURL });
-        localStorage.setItem('pixelArtGallery_v6', JSON.stringify(savedData));
-        loadGallery();
-        artworkNameInput.value = '';
-        alert(`「${name}」をギャラリーに保存しました！`);
+    document.getElementById('saveGalleryBtn').addEventListener('click', () => {
+        const dataURL = canvas.toDataURL("image/png"); const name = document.getElementById('artworkName').value.trim() || "無題";
+        let savedData = JSON.parse(localStorage.getItem('pixelArtGallery_v7') || '[]');
+        savedData.push({ name: name, data: dataURL }); localStorage.setItem('pixelArtGallery_v7', JSON.stringify(savedData));
+        loadGallery(); document.getElementById('artworkName').value = ''; alert(`「${name}」を保存しました！`);
     });
 
-    clearGalleryBtn.addEventListener('click', () => {
-        if(confirm("ギャラリーの作品を全て削除しますか？")) {
-            localStorage.removeItem('pixelArtGallery_v6');
-            loadGallery();
-        }
+    document.getElementById('clearGalleryBtn').addEventListener('click', () => {
+        if(confirm("ギャラリーを空にしますか？")) { localStorage.removeItem('pixelArtGallery_v7'); loadGallery(); }
     });
-    loadGallery();
-
-    // --- データ出力機能 ---
-    function rgbToHex(r, g, b) {
-        return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
-    }
-
-    generateBtn.addEventListener('click', () => {
-        const dataURL = canvas.toDataURL("image/png");
-        dataUrlOutput.value = `url('${dataURL}')`;
-        arrayOutput.value = "生成中...";
-        
+    
+    // --- 【修正】データ出力＆コピー ---
+    function rgbToHex(r, g, b) { return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1); }
+    document.getElementById('generateBtn').addEventListener('click', () => {
+        document.getElementById('dataUrlOutput').value = `url('${canvas.toDataURL("image/png")}')`;
+        document.getElementById('arrayOutput').value = "生成中...";
         setTimeout(() => {
-            const imgData = ctx.getImageData(0, 0, currentWidth, currentHeight).data;
-            let arrayString = "[\n";
+            const imgData = ctx.getImageData(0, 0, currentWidth, currentHeight).data; 
+            // 【修正】末尾にカンマが付かない、正しいJSON配列形式で生成するように変更
+            let rowStrings = [];
             for (let y = 0; y < currentHeight; y++) {
                 let rowArray = [];
                 for (let x = 0; x < currentWidth; x++) {
-                    const i = (y * currentWidth + x) * 4;
-                    const r = imgData[i]; const g = imgData[i + 1]; const b = imgData[i + 2]; const a = imgData[i + 3];
-                    if (a === 0) rowArray.push("null");
-                    else rowArray.push(`"${rgbToHex(r, g, b)}"`);
+                    const i = (y * currentWidth + x) * 4; const a = imgData[i + 3];
+                    if (a === 0) rowArray.push("null"); else rowArray.push(`"${rgbToHex(imgData[i], imgData[i+1], imgData[i+2])}"`);
                 }
-                arrayString += "  [" + rowArray.join(", ") + "],\n";
+                rowStrings.push("  [" + rowArray.join(", ") + "]");
             }
-            arrayString += "]";
-            arrayOutput.value = arrayString;
+            document.getElementById('arrayOutput').value = "[\n" + rowStrings.join(",\n") + "\n]";
         }, 50);
     });
 
-    // --- 配列データのコピー機能 ---
-    copyArrayBtn.addEventListener('click', () => {
-        const textToCopy = arrayOutput.value;
-        if (!textToCopy || textToCopy.includes("生成中...") || textToCopy.includes("上の「コードを生成する」ボタンを")) {
-            alert("コピーするデータがありません。先に「コードを生成する」ボタンを押してください。");
-            return;
-        }
-
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            const originalText = copyArrayBtn.textContent;
-            copyArrayBtn.textContent = "コピー完了！";
-            copyArrayBtn.style.backgroundColor = "#e67e22";
-            setTimeout(() => {
-                copyArrayBtn.textContent = originalText;
-                copyArrayBtn.style.backgroundColor = "#27ae60";
-            }, 2000);
-        }).catch(err => {
-            alert("コピーに失敗しました。");
-        });
+    document.getElementById('copyArrayBtn').addEventListener('click', () => {
+        const text = document.getElementById('arrayOutput').value;
+        if (!text || text.includes("生成中...")) { alert("コピーするデータがありません。"); return; }
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById('copyArrayBtn'); btn.textContent = "コピー完了！"; btn.style.backgroundColor = "#e67e22";
+            setTimeout(() => { btn.textContent = "コピーする"; btn.style.backgroundColor = "#3498db"; }, 2000);
+        }).catch(() => alert("コピーに失敗しました。"));
     });
+
+    document.getElementById('colorPicker').addEventListener('input', (e) => {
+        currentColor = e.target.value; document.getElementById('penSize').dispatchEvent(new Event('input')); if (activeTool === 'eraser') setTool('pen'); 
+    });
+
+    saveState();
+    loadGallery();
 
 </script>
 </body>
